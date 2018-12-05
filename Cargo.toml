@@ -1,0 +1,6 @@
+[package]
+name = "rate-limit-queue"
+version = "0.1.0"
+authors = ["Paul Loyd <pavelko95@gmail.com>"]
+
+[dependencies]
