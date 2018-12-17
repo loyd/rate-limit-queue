@@ -1,3 +1,8 @@
+#![recursion_limit = "128"]
+
+#[macro_use]
+extern crate delegate;
+
 use std::{
     collections::VecDeque,
     iter::Extend,
@@ -17,23 +22,23 @@ pub struct RateLimitQueue<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub enum PopResult<T> {
+pub enum DequeueResult<T> {
     Data(T),
     Empty,
     Limit(Duration),
 }
 
-impl<T> From<Option<T>> for PopResult<T> {
-    fn from(opt: Option<T>) -> PopResult<T> {
-        opt.map_or(PopResult::Empty, PopResult::Data)
+impl<T> From<Option<T>> for DequeueResult<T> {
+    fn from(opt: Option<T>) -> DequeueResult<T> {
+        opt.map_or(DequeueResult::Empty, DequeueResult::Data)
     }
 }
 
-impl<T> Into<Option<T>> for PopResult<T> {
+impl<T> Into<Option<T>> for DequeueResult<T> {
     fn into(self) -> Option<T> {
         match self {
-            PopResult::Data(value) => Some(value),
-            PopResult::Empty | PopResult::Limit(_) => None,
+            DequeueResult::Data(value) => Some(value),
+            DequeueResult::Empty | DequeueResult::Limit(_) => None,
         }
     }
 }
@@ -53,6 +58,18 @@ impl<T> RateLimitQueue<T> {
         }
     }
 
+    delegate! {
+        target self.queue {
+            pub fn capacity(&mut self) -> usize;
+            pub fn reserve_exact(&mut self, additional: usize);
+            pub fn reserve(&mut self, additional: usize);
+            pub fn shrink_to_fit(&mut self);
+            pub fn truncate(&mut self, len: usize);
+            pub fn len(&self) -> usize;
+            pub fn is_empty(&self) -> bool;
+        }
+    }
+
     pub fn set_rate(&mut self, rate: usize) {
         self.rate = rate;
     }
@@ -61,18 +78,18 @@ impl<T> RateLimitQueue<T> {
         self.interval = interval;
     }
 
-    pub fn push(&mut self, value: T) {
+    pub fn enqueue(&mut self, value: T) {
         self.queue.push_back(value);
     }
 
-    pub fn wait(&mut self) -> Option<T> {
-        match self.try_pop() {
-            PopResult::Data(value) => Some(value),
-            PopResult::Empty => None,
-            PopResult::Limit(rest) => {
+    pub fn dequeue(&mut self) -> Option<T> {
+        match self.try_dequeue() {
+            DequeueResult::Data(value) => Some(value),
+            DequeueResult::Empty => None,
+            DequeueResult::Limit(rest) => {
                 thread::sleep(rest);
 
-                if let PopResult::Data(value) = self.try_pop() {
+                if let DequeueResult::Data(value) = self.try_dequeue() {
                     Some(value)
                 } else {
                     unreachable!()
@@ -81,9 +98,9 @@ impl<T> RateLimitQueue<T> {
         }
     }
 
-    pub fn try_pop(&mut self) -> PopResult<T> {
+    pub fn try_dequeue(&mut self) -> DequeueResult<T> {
         if self.queue.is_empty() {
-            return PopResult::Empty;
+            return DequeueResult::Empty;
         }
 
         if self.allowance > 0 {
@@ -95,7 +112,7 @@ impl<T> RateLimitQueue<T> {
         let elapsed = now.duration_since(self.timepoint);
 
         match self.interval.checked_sub(elapsed) {
-            Some(rest) => PopResult::Limit(rest),
+            Some(rest) => DequeueResult::Limit(rest),
             None => {
                 self.allowance = self.rate - 1;
                 self.timepoint = now;
@@ -110,10 +127,6 @@ impl<T> RateLimitQueue<T> {
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.queue.iter_mut().take(self.allowance)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.queue.is_empty()
     }
 }
 

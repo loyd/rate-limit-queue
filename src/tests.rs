@@ -9,13 +9,13 @@ fn it_should_spread_big_chunk() {
     let mut queue = RateLimitQueue::new(rate, interval);
 
     for i in 0..coef * rate {
-        queue.push(i);
+        queue.enqueue(i);
     }
 
     let mut n = 0;
     let start = Instant::now();
 
-    while let Some(item) = queue.wait() {
+    while let Some(item) = queue.dequeue() {
         assert_eq!(item, n);
         n += 1;
     }
@@ -37,22 +37,22 @@ fn it_should_not_have_accumulative_effect() {
     queue.extend(0..2 * rate);
 
     for i in 0..rate {
-        assert_eq!(queue.try_pop(), PopResult::Data(i));
+        assert_eq!(queue.try_dequeue(), DequeueResult::Data(i));
     }
 
-    match queue.try_pop() {
-        PopResult::Data(_) | PopResult::Empty => unreachable!(),
-        PopResult::Limit(_) => {}
+    match queue.try_dequeue() {
+        DequeueResult::Data(_) | DequeueResult::Empty => unreachable!(),
+        DequeueResult::Limit(_) => {}
     }
 
     thread::sleep(3 * interval);
 
     for i in rate..2 * rate {
-        assert_eq!(queue.try_pop(), PopResult::Data(i));
+        assert_eq!(queue.try_dequeue(), DequeueResult::Data(i));
     }
 
-    match queue.try_pop() {
-        PopResult::Data(_) | PopResult::Limit(_) => unreachable!(),
-        PopResult::Empty => {}
+    match queue.try_dequeue() {
+        DequeueResult::Data(_) | DequeueResult::Limit(_) => unreachable!(),
+        DequeueResult::Empty => {}
     }
 }
