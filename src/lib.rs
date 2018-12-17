@@ -1,8 +1,12 @@
 use std::{
     collections::VecDeque,
+    iter::Extend,
     thread,
     time::{Duration, Instant},
 };
+
+#[cfg(test)]
+mod tests;
 
 pub struct RateLimitQueue<T> {
     rate: usize,
@@ -12,6 +16,7 @@ pub struct RateLimitQueue<T> {
     timepoint: Instant,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum PopResult<T> {
     Data(T),
     Empty,
@@ -108,34 +113,8 @@ impl<T> RateLimitQueue<T> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let rate = 10;
-        let interval = Duration::from_millis(100);
-        let coef = 10;
-
-        let mut queue = RateLimitQueue::new(rate, interval);
-
-        for i in 0..coef * rate {
-            queue.push(i);
-        }
-
-        let mut n = 0;
-        let start = Instant::now();
-
-        while let Some(item) = queue.wait() {
-            assert_eq!(item, n);
-            n += 1;
-        }
-
-        let spent = start.elapsed();
-        let expected = interval * (coef - 1) as u32;
-
-        assert!(spent > expected);
-        assert!(spent < expected + interval / 10);
+impl<T> Extend<T> for RateLimitQueue<T> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        self.queue.extend(iter)
     }
 }
