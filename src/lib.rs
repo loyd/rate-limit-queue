@@ -40,10 +40,14 @@ impl<T> Into<Option<T>> for PopResult<T> {
 
 impl<T> RateLimitQueue<T> {
     pub fn new(rate: usize, interval: Duration) -> RateLimitQueue<T> {
+        RateLimitQueue::with_capacity(rate, interval, 0)
+    }
+
+    pub fn with_capacity(rate: usize, interval: Duration, cap: usize) -> RateLimitQueue<T> {
         RateLimitQueue {
             rate,
             interval,
-            queue: VecDeque::new(),
+            queue: VecDeque::with_capacity(cap),
             allowance: rate,
             timepoint: Instant::now(),
         }
