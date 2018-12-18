@@ -2,13 +2,13 @@ use super::*;
 
 #[test]
 fn it_should_spread_big_chunk() {
-    let rate = 10;
+    let quantum = 10;
     let interval = Duration::from_millis(100);
     let coef = 10;
 
-    let mut queue = RateLimitQueue::new(rate, interval);
+    let mut queue = RateLimitQueue::new(quantum, interval);
 
-    for i in 0..coef * rate {
+    for i in 0..coef * quantum {
         queue.enqueue(i);
     }
 
@@ -29,14 +29,14 @@ fn it_should_spread_big_chunk() {
 
 #[test]
 fn it_should_not_have_accumulative_effect() {
-    let rate = 10;
+    let quantum = 10;
     let interval = Duration::from_millis(100);
 
-    let mut queue = RateLimitQueue::new(rate, interval);
+    let mut queue = RateLimitQueue::new(quantum, interval);
 
-    queue.extend(0..2 * rate);
+    queue.extend(0..2 * quantum);
 
-    for i in 0..rate {
+    for i in 0..quantum {
         assert_eq!(queue.try_dequeue(), DequeueResult::Data(i));
     }
 
@@ -44,9 +44,28 @@ fn it_should_not_have_accumulative_effect() {
 
     thread::sleep(3 * interval);
 
-    for i in rate..2 * rate {
+    for i in quantum..2 * quantum {
         assert_eq!(queue.try_dequeue(), DequeueResult::Data(i));
     }
 
     assert_eq!(queue.try_dequeue(), DequeueResult::Empty);
+}
+
+#[test]
+fn it_should_change_allowance_during_iter() {
+    let quantum = 2;
+    let interval = Duration::from_millis(100);
+
+    let mut queue = RateLimitQueue::new(quantum, interval);
+    queue.enqueue(0);
+    queue.enqueue(1);
+    queue.enqueue(2);
+
+    let it = queue.iter();
+    drop(it);
+
+    let actual: Vec<&u32> = queue.iter().collect();
+    assert_eq!(&actual, &[&0, &1]);
+
+    assert!(queue.try_dequeue().is_limit());
 }

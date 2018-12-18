@@ -250,7 +250,12 @@ impl<T> RateLimitQueue<T> {
     /// assert_eq!(&c[..], b);
     /// ```
     pub fn iter(&mut self) -> impl Iterator<Item = &T> {
-        self.queue.iter().take(self.allowance)
+        let allowance = &mut self.allowance;
+
+        self.queue
+            .iter()
+            .take(*allowance)
+            .inspect(move |_| *allowance -= 1)
     }
 
     /// Returns a front-to-back iterator that returns mutable references.
@@ -270,7 +275,12 @@ impl<T> RateLimitQueue<T> {
     /// assert_eq!(&c[..], b);
     /// ```
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        self.queue.iter_mut().take(self.allowance)
+        let allowance = &mut self.allowance;
+
+        self.queue
+            .iter_mut()
+            .take(*allowance)
+            .inspect(move |_| *allowance -= 1)
     }
 }
 
