@@ -84,7 +84,7 @@ impl<T> RateLimitQueue<T> {
         RateLimitQueue::with_capacity(0, quantum, interval)
     }
 
-    /// Creates an empty `VecDeque` with space for at least `n` elements.
+    /// Creates an empty queue with space for at least `n` elements.
     ///
     /// # Examples
     ///
