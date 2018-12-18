@@ -40,10 +40,7 @@ fn it_should_not_have_accumulative_effect() {
         assert_eq!(queue.try_dequeue(), DequeueResult::Data(i));
     }
 
-    match queue.try_dequeue() {
-        DequeueResult::Data(_) | DequeueResult::Empty => unreachable!(),
-        DequeueResult::Limit(_) => {}
-    }
+    assert!(queue.try_dequeue().is_limit());
 
     thread::sleep(3 * interval);
 
@@ -51,8 +48,5 @@ fn it_should_not_have_accumulative_effect() {
         assert_eq!(queue.try_dequeue(), DequeueResult::Data(i));
     }
 
-    match queue.try_dequeue() {
-        DequeueResult::Data(_) | DequeueResult::Limit(_) => unreachable!(),
-        DequeueResult::Empty => {}
-    }
+    assert_eq!(queue.try_dequeue(), DequeueResult::Empty);
 }
